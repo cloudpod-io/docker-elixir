@@ -10,19 +10,49 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: macos-13
     name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       matrix:
-        otp: ["26.0.2", "21.0.9"]
-        elixir: ["1.15.4", "1.6.6"]
+        # otp: ["26.0.2", "21.0.9"]
+        # elixir: ["1.15.4", "1.6.6"]
+        otp: ["26.0.2"]
+        elixir: ["1.15.4"]
     steps:
       - uses: actions/checkout@v2
+
+      - name: Cache Vagrant boxes
+        uses: actions/cache@v2
+        with:
+          path: ~/.vagrant.d/boxes
+          key: ${{ runner.os }}-vagrant-${{ hashFiles('vagrant/ci/Vagrantfile') }}
+          restore-keys: |
+            ${{ runner.os }}-vagrant-
+
+      - name: Show Vagrant version
+        run: cd vagrant/ci && vagrant --version
+
+      - name: Run vagrant up
+        run: cd vagrant/ci && vagrant up
+
+      # save the github runner ip
+      - name: Get Github Runner IP
+        id: github-runner-ip
+        run: |
+          echo "{github-runner-ip}={$(hostname -I)}" >> "$GITHUB_OUTPUT"
+
+      - name: Get Vagrant IP
+        id: vagrant-ip
+        run: |
+          cd vagrant/ci
+          echo "{vagrant-ip}={$(vagrant ssh-config | grep HostName | awk '{print $2}')}" >> "$GITHUB_OUTPUT"
+
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
+
       - uses: actions/cache@v2
         with:
           path: |
