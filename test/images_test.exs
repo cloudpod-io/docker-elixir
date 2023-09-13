@@ -5,7 +5,7 @@ defmodule ImagesTest do
   @test_image_tag "latest"
 
   setup_all do
-    IO.puts "Pulling #{@test_image}:#{@test_image_tag} for testing..."
+    IO.puts("Pulling #{@test_image}:#{@test_image_tag} for testing...")
     Docker.Images.pull(@test_image, @test_image_tag)
     :ok
   end
@@ -13,10 +13,14 @@ defmodule ImagesTest do
   test "list images" do
     images = Docker.Images.list()
     assert is_list(images)
-    filtered = Enum.filter(images, fn image ->
-      "#{@test_image}:#{@test_image_tag}" in image["RepoTags"]
-    end)
-    assert length(filtered) > 0
+
+    test_image_exists? =
+      images
+      |> Enum.map(&Map.get(&1, "RepoTags", []))
+      |> List.flatten()
+      |> Enum.member?("#{@test_image}:#{@test_image_tag}")
+
+    assert test_image_exists?
   end
 
   test "inspect image" do
