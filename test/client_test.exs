@@ -1,13 +1,21 @@
 defmodule ClientTest do
   use ExUnit.Case
 
-  @socket_path "unix:///var/run/docker.sock"
+  test "test multiple docker clients" do
+    extra_docker_host = System.get_env("EXTRA_DOCKER_HOST")
 
-  test "test explicit host defined client" do
-    ping =
-      Docker.Client.client(host: @socket_path)
-      |> Docker.Misc.ping()
+    assert extra_docker_host, "Please set EXTRA_DOCKER_HOST to test multiple docker clients"
 
-    assert ping == "OK"
+    default_docker_host_id =
+      Docker.Client.client()
+      |> Docker.Misc.info()
+      |> Map.get("ID")
+
+    extra_docker_host_id =
+      Docker.Client.client(host: extra_docker_host)
+      |> Docker.Misc.info()
+      |> Map.get("ID")
+
+    assert default_docker_host_id != extra_docker_host_id
   end
 end
