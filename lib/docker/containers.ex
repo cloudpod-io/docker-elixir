@@ -1,49 +1,75 @@
 defmodule Docker.Containers do
   @base_uri "/containers"
 
+  import Docker.Client, only: [client: 0]
+  import Kernel, except: [inspect: 2]
+
   @doc """
   List all existing containers.
   """
-  def list do
-    "#{@base_uri}/json?all=true" |> Docker.Client.get
+  def list(), do: client() |> list()
+
+  def list(client) do
+    client
+    |> Docker.Client.get("#{@base_uri}/json?all=true")
   end
 
   @doc """
   Inspect a container by ID.
   """
-  def inspect(id) do
-    "#{@base_uri}/#{id}/json" |> Docker.Client.get
+  def inspect(id), do: client() |> inspect(id)
+
+  def inspect(client, id) do
+    client
+    |> Docker.Client.get("#{@base_uri}/#{id}/json")
   end
 
   @doc """
   Stop a running container.
   """
-  def stop(id) do
-    "#{@base_uri}/#{id}/stop" |> Docker.Client.post
+  def stop(id), do: client() |> stop(id)
+
+  def stop(client, id) do
+    client
+    |> Docker.Client.post("#{@base_uri}/#{id}/stop")
   end
 
   @doc """
   Remove a container. Assumes the container is already stopped.
   """
-  def remove(id) do
-    "#{@base_uri}/#{id}" |> Docker.Client.delete
+  def remove(id), do: client() |> remove(id)
+
+  def remove(client, id) do
+    client
+    |> Docker.Client.delete("#{@base_uri}/#{id}")
   end
 
   @doc """
   Create a container from an existing image.
   """
-  def create(conf) do
-    Docker.Client.post("#{@base_uri}/create", conf)
+  def create(conf), do: client() |> create(conf)
+
+  def create(client, conf) do
+    create(client, conf, nil)
   end
-  def create(conf, name) do
-    Docker.Client.post("#{@base_uri}/create?name=#{name}", conf)
+
+  def create(client, conf, nil) do
+    client
+    |> Docker.Client.post("#{@base_uri}/create", conf)
+  end
+
+  def create(client, conf, name) do
+    client
+    |> Docker.Client.post("#{@base_uri}/create?name=#{name}", conf)
   end
 
   @doc """
   Starts a newly created container.
   """
-  def start(id) do
-    Docker.Client.post("#{@base_uri}/#{id}/start", %{})
+  def start(id), do: client() |> start(id)
+
+  def start(client, id) do
+    start(client, id, %{})
   end
 
   @doc """
@@ -51,7 +77,8 @@ defmodule Docker.Containers do
   The start config was deprecated as of v1.15 of the API, and all
   host parameters should be in the create configuration.
   """
-  def start(id, conf) do
-    Docker.Client.post("#{@base_uri}/#{id}/start", conf)
+  def start(client, id, conf) do
+    client
+    |> Docker.Client.post("#{@base_uri}/#{id}/start", conf)
   end
 end
