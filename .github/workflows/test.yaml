@@ -1,3 +1,9 @@
+# The tests require 2 docker hosts. This is accomplished by using Vagrant to
+# create a VM with docker installed. The macos-12 runner is used because it
+# supports nested virtualization. However, erlef/setup-beam@v1 does not support
+# macos-12, so we create 2 VMs. One to run the elixir tests and one to run the
+# extra docker host.
+
 on:
   push:
     branches:
@@ -10,26 +16,38 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-    name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
-    strategy:
-      matrix:
-        otp: ["26.0.2", "21.0.9"]
-        elixir: ["1.15.4", "1.6.6"]
+    runs-on: macos-12
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache Vagrant boxes
+        uses: actions/cache@v2
         with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - uses: actions/cache@v2
-        with:
-          path: |
-            deps
-            _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          path: ~/.vagrant.d/boxes
+          key: ${{ runner.os }}-vagrant-${{ hashFiles('vagrant/ci/Vagrantfile') }}
           restore-keys: |
-            ${{ runner.os }}-mix-
-      - run: mix deps.get
-      - run: mix test
+            ${{ runner.os }}-vagrant-
+
+      - name: Run vagrant up
+        run: cd vagrant/ci && vagrant up
+
+      - name: Copy files to Vagrant box
+        run: |
+          cd vagrant/ci
+          vagrant upload --compress ../../ /home/vagrant/
+
+      - name: Setup Elixir tools
+        run: |
+          cd vagrant/ci
+          vagrant ssh -c "mix local.hex --force && mix local.rebar --force"
+
+      - name: Get deps
+        run: |
+          cd vagrant/ci
+          vagrant ssh -c "mix deps.get"
+
+      - name: Run tests
+        run: |
+          cd vagrant/ci
+          vagrant ssh -c "EXTRA_DOCKER_HOST=tcp://192.168.56.101:2375 mix test"
